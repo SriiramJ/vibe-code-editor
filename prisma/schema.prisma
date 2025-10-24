@@ -18,17 +18,22 @@ enum UserRole {
   USER
   PREMIUM_USER
 }
-model User{
-  id String @id @default(cuid()) @map("_id")
-  name String?
-  email String @unique
-  image String?
+
+model User {
+  id       String    @id @default(cuid()) @map("_id")
+  name     String?
+  email    String    @unique
+  image    String?
   accounts Account[]
-  role UserRole @default(USER)
-  myPlayground Playground[]
+  role     UserRole  @default(USER)
+
+  myPlaground Playground[]
+  staredPlayground Starmark[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 model Account {
   id                String  @id @default(cuid()) @map("_id")
   userId            String  @map("user_id")
@@ -49,23 +54,37 @@ model Account {
   @@index([userId])
 }
 
-enum Templates{
+enum Templates {
   REACT
-  REACTJS
+  NEXTJS
   EXPRESS
   VUE
   HONO
   ANGULAR
 }
+model Playground {
+  id  String @id @default(cuid()) @map("_id")
+  title  String
+  description String?
+  template   Templates  @default(REACT)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime @updatedAt
+ 
+ Starmark   Starmark[]
+  userId  String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-model Playground{
-  id String @id @default(cuid()) @map("_id")
-  title String
-  description String
-  template Templates @default(REACT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+
+model Starmark {
+  id  String @id @default(cuid()) @map("_id")
+  userId String
+  playgroundId String
+  isMarked  Boolean
+  createdAt  DateTime  @default(now())
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playground   Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
+
+  @@unique([userId , playgroundId])
+}
