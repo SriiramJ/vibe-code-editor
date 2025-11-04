@@ -62,7 +62,7 @@ const MainPlaygroundPage = () => {
     error: containerError,
     instance,
     writeFileSync,
-  } = useWebContainer({templateData});
+  } = useWebContainer({ templateData });
 
   useEffect(() => {
     setPlaygroundId(id);
@@ -163,7 +163,7 @@ const MainPlaygroundPage = () => {
             </div>
           </header>
 
-          <div className="h-[calc(100vh-4rem)]">
+          <div className="flex-1 min-h">
             {openFiles.length > 0 ? (
               <div className="h-full flex flex-col">
                 <div className="border-b bg-muted/30">
