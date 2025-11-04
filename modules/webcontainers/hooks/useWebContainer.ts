@@ -3,7 +3,7 @@ import { WebContainer } from "@webcontainer/api";
 import { TemplateFolder } from "@/modules/playground/lib/path-to-json";
 
 interface UseWebContainerProps {
-  templateData: TemplateFolder | null;
+  templateData: TemplateFolder;
 }
 
 interface UseWebContaierReturn {
@@ -12,7 +12,7 @@ interface UseWebContaierReturn {
   error: string | null;
   instance: WebContainer | null;
   writeFileSync: (path: string, content: string) => Promise<void>;
-  destroy: () => void;
+  destory: () => void;
 }
 
 export const useWebContainer = ({
@@ -82,7 +82,7 @@ export const useWebContainer = ({
     [instance]
   );
 
-  const destroy = useCallback(()=>{
+  const destory = useCallback(()=>{
     if(instance){
         instance.teardown()
         setInstance(null);
@@ -90,5 +90,5 @@ export const useWebContainer = ({
     }
   },[instance])
 
-  return {serverUrl , isLoading , error , instance , writeFileSync , destroy}
+  return {serverUrl , isLoading , error , instance , writeFileSync , destory}
 };
