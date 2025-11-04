@@ -1,7 +1,17 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +26,8 @@ import { TemplateFileTree } from "@/modules/playground/components/playground-exp
 import { useFileExplorer } from "@/modules/playground/hooks/useFileExplorer";
 import { usePlayground } from "@/modules/playground/hooks/usePlayground";
 import { TemplateFile } from "@/modules/playground/lib/path-to-json";
+import WebContainerPreview from "@/modules/webcontainers/components/webContainerPreview";
+import { useWebContainer } from "@/modules/webcontainers/hooks/useWebContainer";
 import { Bot, FileText, Save, Settings, X } from "lucide-react";
 import { useParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -43,6 +55,14 @@ const MainPlaygroundPage = () => {
     openFile,
     openFiles,
   } = useFileExplorer();
+
+  const {
+    serverUrl,
+    isLoading: containerLoading,
+    error: containerError,
+    instance,
+    writeFileSync,
+  } = useWebContainer({templateData});
 
   useEffect(() => {
     setPlaygroundId(id);
@@ -79,17 +99,17 @@ const MainPlaygroundPage = () => {
             <SidebarTrigger className="-ml-1" />
             <Separator className="mr-2 h-4" orientation="vertical" />
             <div className="flex flex-1 items-center gap-2">
-            <div className="flex flex-col flex-1">
-              <h1 className="text-sm font-medium">
-                {playgroundData?.title || "Code Playground"}
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                {openFiles.length} File(s) Open
-                {hasUnsavedChanges && " • Unsaved changes"}
-              </p>
-            </div>
+              <div className="flex flex-col flex-1">
+                <h1 className="text-sm font-medium">
+                  {playgroundData?.title || "Code Playground"}
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  {openFiles.length} File(s) Open
+                  {hasUnsavedChanges && " • Unsaved changes"}
+                </p>
+              </div>
 
-            <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1">
                 <Tooltip>
                   <TooltipTrigger>
                     <Button
@@ -103,13 +123,13 @@ const MainPlaygroundPage = () => {
                   </TooltipTrigger>
                   <TooltipContent>Save (Ctrl+S)</TooltipContent>
                 </Tooltip>
-                  
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={()=>{}}
+                      onClick={() => {}}
                       disabled={!hasUnsavedChanges}
                     >
                       <Save className="h-4 w-4" /> All
@@ -117,11 +137,9 @@ const MainPlaygroundPage = () => {
                   </TooltipTrigger>
                   <TooltipContent>Save All (Ctrl+Shift+S)</TooltipContent>
                   <Button variant={"default"} size={"icon"}>
-                  <Bot className="size-4"/>
+                    <Bot className="size-4" />
                   </Button>
                 </Tooltip>
-
-               
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -142,12 +160,11 @@ const MainPlaygroundPage = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-          </div>
-        </header>
+            </div>
+          </header>
 
-        <div className="h-[calc(100vh-4rem)]">
-          {
-            openFiles.length > 0 ? (
+          <div className="h-[calc(100vh-4rem)]">
+            {openFiles.length > 0 ? (
               <div className="h-full flex flex-col">
                 <div className="border-b bg-muted/30">
                   <Tabs
@@ -198,21 +215,38 @@ const MainPlaygroundPage = () => {
                   </Tabs>
                 </div>
                 <div className="flex-1">
-                  <ResizablePanelGroup direction="horizontal" className="h-full">
+                  <ResizablePanelGroup
+                    direction="horizontal"
+                    className="h-full"
+                  >
                     <ResizablePanel defaultSize={isPreviewVisible ? 50 : 100}>
-                      
-                      <PlaygroundEditor 
-                      activeFile={activeFile}
-                      content={activeFile?.content || ""}
-                      onContentChange={()=>{}}
+                      <PlaygroundEditor
+                        activeFile={activeFile}
+                        content={activeFile?.content || ""}
+                        onContentChange={() => {}}
                       />
-
                     </ResizablePanel>
+                    {isPreviewVisible && (
+                      <>
+                        <ResizableHandle />
+                        <ResizablePanel defaultSize={50}>
+                          <WebContainerPreview
+                            templateData={templateData}
+                            instance={instance}
+                            writeFileSync={writeFileSync}
+                            isLoading={containerLoading}
+                            error={containerError}
+                            serverUrl={serverUrl!}
+                            forceResetup={false}
+                          />
+                        </ResizablePanel>
+                      </>
+                    )}
                   </ResizablePanelGroup>
                 </div>
               </div>
-            
-            ):(<div className="flex flex-col h-full items-center justify-center text-muted-foreground gap-4">
+            ) : (
+              <div className="flex flex-col h-full items-center justify-center text-muted-foreground gap-4">
                 <FileText className="h-16 w-16 text-gray-300" />
                 <div className="text-center">
                   <p className="text-lg font-medium">No files open</p>
@@ -220,10 +254,9 @@ const MainPlaygroundPage = () => {
                     Select a file from the sidebar to start editing
                   </p>
                 </div>
-              </div>)
-          }
-        </div>
-
+              </div>
+            )}
+          </div>
         </SidebarInset>
       </>
     </TooltipProvider>
