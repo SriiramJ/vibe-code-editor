@@ -22,9 +22,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import LoadingStep from "@/modules/playground/components/loader";
-import PlaygroundEditor from "@/modules/playground/components/playground-editor";
+import { PlaygroundEditor } from "@/modules/playground/components/playground-editor";
 import { TemplateFileTree } from "@/modules/playground/components/playground-explorer";
 import ToggleAI from "@/modules/playground/components/toggle-ai";
+import { useAISuggestions } from "@/modules/playground/hooks/useAISuggestion";
 import { useFileExplorer } from "@/modules/playground/hooks/useFileExplorer";
 import { usePlayground } from "@/modules/playground/hooks/usePlayground";
 import { findFilePath } from "@/modules/playground/lib";
@@ -44,20 +45,23 @@ import {
   X,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 const MainPlaygroundPage = () => {
   const { id } = useParams<{ id: string }>();
   const [isPreviewVisible, setIsPreviewVisible] = useState(true);
-  const {
-    playgroundData,
-    templateData,
-    isLoading,
-    error,
-    loadPlayground,
-    saveTemplateData,
-  } = usePlayground(id);
+
+  const { playgroundData, templateData, isLoading, error, saveTemplateData } =
+    usePlayground(id);
+
+  const aiSuggestions = useAISuggestions();
 
   const {
     setTemplateData,
@@ -167,6 +171,7 @@ const MainPlaygroundPage = () => {
 
   const activeFile = openFiles.find((file) => file.id === activeFileId);
   const hasUnsavedChanges = openFiles.some((file) => file.hasUnsavedChanges);
+
   const handleFileSelect = (file: TemplateFile) => {
     openFile(file);
   };
@@ -175,8 +180,11 @@ const MainPlaygroundPage = () => {
     async (fileId?: string) => {
       const targetFileId = fileId || activeFileId;
       if (!targetFileId) return;
+
       const fileToSave = openFiles.find((f) => f.id === targetFileId);
+
       if (!fileToSave) return;
+
       const latestTemplateData = useFileExplorer.getState().templateData;
       if (!latestTemplateData) return;
 
@@ -184,10 +192,11 @@ const MainPlaygroundPage = () => {
         const filePath = findFilePath(fileToSave, latestTemplateData);
         if (!filePath) {
           toast.error(
-            `Could not find the path for the file:${fileToSave.filename}.${fileToSave.fileExtension}`
+            `Could not find path for file: ${fileToSave.filename}.${fileToSave.fileExtension}`
           );
           return;
         }
+
         const updatedTemplateData = JSON.parse(
           JSON.stringify(latestTemplateData)
         );
@@ -210,6 +219,7 @@ const MainPlaygroundPage = () => {
           updatedTemplateData.items
         );
 
+        // Sync with WebContainer
         if (writeFileSync) {
           await writeFileSync(filePath, fileToSave.content);
           lastSyncedContent.current.set(fileToSave.id, fileToSave.content);
@@ -217,9 +227,11 @@ const MainPlaygroundPage = () => {
             await instance.fs.writeFile(filePath, fileToSave.content);
           }
         }
+
         const newTemplateData = await saveTemplateData(updatedTemplateData);
         // @ts-ignore
         setTemplateData(newTemplateData || updatedTemplateData);
+
         // Update open files
         const updatedOpenFiles = openFiles.map((f) =>
           f.id === targetFileId
@@ -254,6 +266,7 @@ const MainPlaygroundPage = () => {
       setOpenFiles,
     ]
   );
+
   const handleSaveAll = async () => {
     const unsavedFiles = openFiles.filter((f) => f.hasUnsavedChanges);
 
@@ -269,6 +282,7 @@ const MainPlaygroundPage = () => {
       toast.error("Failed to save some files");
     }
   };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "s") {
@@ -279,6 +293,7 @@ const MainPlaygroundPage = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleSave]);
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] p-4">
@@ -334,7 +349,8 @@ const MainPlaygroundPage = () => {
       </div>
     );
   }
-   return (
+
+  return (
     <TooltipProvider>
       <>
         <TemplateFileTree
@@ -394,11 +410,11 @@ const MainPlaygroundPage = () => {
                   <TooltipContent>Save All (Ctrl+Shift+S)</TooltipContent>
                 </Tooltip>
 
-               <ToggleAI
-                isEnabled={true}
-                onToggle={()=>{}}
-                suggestionLoading={false}
-               />
+                <ToggleAI
+                  isEnabled={aiSuggestions.isEnabled}
+                  onToggle={aiSuggestions.toggleEnabled}
+                  suggestionLoading={aiSuggestions.isLoading}
+                />
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -482,13 +498,21 @@ const MainPlaygroundPage = () => {
                       <PlaygroundEditor
                         activeFile={activeFile}
                         content={activeFile?.content || ""}
-                        onContentChange={(value) => 
-                          activeFileId && updateFileContent(activeFileId , value)
+                        onContentChange={(value) =>
+                          activeFileId && updateFileContent(activeFileId, value)
                         }
-                        
-
-                         
-                        
+                        suggestion={aiSuggestions.suggestion}
+                        suggestionLoading={aiSuggestions.isLoading}
+                        suggestionPosition={aiSuggestions.position}
+                        onAcceptSuggestion={(editor, monaco) =>
+                          aiSuggestions.acceptSuggestion(editor, monaco)
+                        }
+                        onRejectSuggestion={(editor) =>
+                          aiSuggestions.rejectSuggestion(editor)
+                        }
+                        onTriggerSuggestion={(type, editor) =>
+                          aiSuggestions.fetchSuggestion(type, editor)
+                        }
                       />
                     </ResizablePanel>
 
